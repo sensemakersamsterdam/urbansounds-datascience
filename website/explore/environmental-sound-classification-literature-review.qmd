@@ -1,0 +1,132 @@
+---
+title: Deep learning for Environmental Sound Classification 
+author: Sjoerd de Haan
+date: 2025-06-16
+execute: 
+  cache: true
+bibliography: esc-literature.bib
+---
+
+A Google Scholar search on "Environmental Sound Classification" yields a long list of articles. Topics vary from Bird sound classification to construction site classification.
+Most papers combine feature extraction with simple machine learning methods. Other papers contribute to the taxonomy, disentanglement or hardware constraints. 
+
+There are many deep learning based approaches for specific applications; e.g. "Elephants sound classification".
+And there are papers that improve deep learning approaches. 
+
+
+Over the weekend I dived into the last category: deep learning methodology
+
+
+# Datasets
+
+Most deep learning methodology papers report results on the Urban Sounds 8K, ESC 50 and ESC 10. 
+
+A look at these datasets shows how limited they are:
+
+- Many clear audio recordings
+- Only some salient sounds 
+- Categories that are easily separable for humans
+
+See a more detailed discussion in [Urban Sound 8K Dataset](urban-sound-8k.qmd).
+
+## Urban Sounds 8K
+
+Take the Urban Sounds 8K dataset @salamonDatasetTaxonomyUrban2014 The paper introduces an extensive taxonomy.
+Their environmental sounds classification set contains only 10 categories:
+
+- Dog bark
+- Children playing
+- Car horn
+- Air conditioner
+- Street music
+- Gun shot
+- Siren
+- Engine idling
+- Jackhammer
+- Drilling
+
+
+Take the jackhammers.
+These crystal clear audio samples with a quality, featuring perfect jackhammers that I rarely hear on the streets. 
+The samples show some variation in pitch and timbre, but there is no noise or sounds mixing from far away. 
+
+
+When I limit to the salience sounds, the jackhammers stay laud and clear on foreground. In some cases there is an additional mixing of sounds. 
+In other cases the jackhammer is less pure. 
+
+See the audio explorer here:
+[Filtering on the salience sounds](https://huggingface.co/datasets/danavery/urbansound8K/viewer/default/train?f[salience][min]=2&f[salience][imax]=2)
+
+
+
+## ESC 50
+ESC @piczakESCDatasetEnvironmental2015 is even further derived from real street data. 
+Most samples are of such high quality, I bet the can be uses by sound designers in a movie or game. 
+
+It is no surprise that papers score consistently higher on ESC 50 than on Urban Sounds 8K; despite the latter having 5x fewer classes.  
+
+[Data Browser ESC 50](https://huggingface.co/datasets/ashraq/esc50)
+
+
+# Papers
+
+
+The data that we record in Amsterdam is of much lower quality than the data in the ESC datasets. 
+The samples are often mixed with background noise, and the sounds are often salient.
+
+Modern deep audio architectures use elements of self-supervised learning, that allows them to train on amounts of unlabeled data. 
+Such models also surface in the ESC literature. The are pre-trained on large audio datasets, which makes it easy to fit them on the smaller ESC datasets.
+A problem with this approach is overhitting. Several papers mention this.  
+
+## Architectures
+
+Over the years, deep learning architectures evolved. CNN-based architectures include SoundCLR @nasiriSoundCLRContrastiveLearning2021 and Micro-ACDNet. Then transformer-based architectures   (AST, BEATs, EAT) and multi-modal architectures  AudioCLIP @guzhovAudioCLIPExtendingCLIP2021 and CLAP 
+@paissanTinyCLAPDistillingConstrastive2024
+
+1. CNN's are good at dealing with local features and they are efficient
+1. Transformers are better at capturing long-range dependencies in the data. 
+2. Multi-modal architectures combine audio and text data, which allows them to learn richer representations of the audio data 
+
+AudioCLIP [@guzhovAudioCLIPExtendingCLIP2021] achieves 90.07% accuracy on the UrbanSound8K dataset and 97.15% on the ESC-50 dataset, outperforming other approaches.
+AudioCLIP uses a commination of audio, image and text data to learn a joint representation of the samples
+
+
+Transformer-based architectures are large. The AudioCLIP model is over 500 megabytes in size (full precision). 
+
+
+@nasiriSoundCLRContrastiveLearning2021
+
+## Augmentation
+
+Most papers perform extensive augmentation to the audio samples. This is needed to mitigate over-fitting.
+
+- SoundCLR uses supervised contrastive loss adapted from SimCLR.
+- Ast uses self-supervised pre training
+- Patch-mix uses patch level contrastive learning 
+- CLAP uses language-audio contrastive learning
+- AudioClip uses audio-text contrastive loss. 
+
+
+Most papers mention the alleged noise in ESC datasets as another reason for augmentation.
+When I listen to the samples I am not convinced that the noise is a problem.
+
+# Features vs End-to-end
+
+Then I came across a paper [@morsaliFaceFastAccurate2023] about Active learning on ESC datasets that blew my mind.
+
+
+The authors perform selection on engineered features. After feature selection they represent audio samples of 4 seconds with a vector of 810 features. 
+These vectors have local and global structures that the authors exploit in a neatly crafted neural network.
+Their network is surprisingly shallow; it is just 7 layers deep. They do introduce 5 parallel convolutional branches though. To capture features across scales.   
+The number of parameters is about 20 million; comparable to a Resnet model.  
+
+
+With this setup, the authors achieve 98% mAP on Urban Sounds 8k, surpassing AudioCLIP and CLAP.
+
+
+
+# Conclusion
+
+The ESC datasets are not representative of the real world. The datasets used to benchmark academic papers avoid the intricacies of real-world street sounds as we record them at Sensemakers.  
+The FACE paper shows that large audio models are not needed for these datasets. Their carefully crafted model achieves state-of-the-art results on the ESC datasets, surpassing multi modal models like CLAP and AudioCLIP.
+

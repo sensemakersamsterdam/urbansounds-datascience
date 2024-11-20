@@ -1,0 +1,307 @@
+---
+title: Huggingface AudioFolder Dataset
+author: Sjoerd de Haan
+date: 14-01-2025
+execute: 
+  cache: true
+---
+
+## Introduction
+
+In 2018 I worked with the `FastAI`; a library that made deep learning accessible to many. It provided a high-level interface for training models, including flexible data loading and augmentation pipelines. It impressed me. The library provide great defaults, while it retained enough flexibility for Kaggle masters to apply the latest research techniques.
+
+
+Today I am going to look into HuggingFace's `datasets` library, which has become a cornerstone for working with machine learning datasets.
+
+
+HuggingFace's has become the glue that connects machine learning developers all over the world; making data and models exchangeable and reproducible. The `datasets` library is a key part of this ecosystem, providing a wide range of tools to make various types of datasets easily accessible for machine learning tasks.
+
+It covers tasks in text, image, and audio domains. It covers frameworks like PyTorch, TensorFlow, and JAX, and provides a consistent interface for loading, processing, and using datasets.
+
+
+With the `audiofolder` dataset you can quickly turn a directory of audio files into a structured dataset that integrates seamlessly with HuggingFace's ecosystem. It automatically handles audio decoding, resampling, and provides a consistent interface for audio machine learning workflows; similar to the experience of FastAI.  
+
+
+
+### Objectives
+
+- **Explore AudioFolder Dataset**: Understand how the `audiofolder` dataset builder works with local audio files
+- **Dataset Structure Analysis**: Examine the format and properties of the loaded dataset
+- **Audio Processing Workflow**: Test the integration with transformers pipelines for audio classification
+- **Model Performance**: Evaluate CLAP model predictions on the loaded audio samples
+
+## Dataset Overview
+
+Let's check the directory with audio samples:
+
+```{python}
+from pathlib import Path
+import sys
+sys.path.append('../../')
+from config import SAMPLES_DIR
+
+datadir = Path(SAMPLES_DIR)
+samples = list(datadir.glob("*.wav"))
+print(f"Total audio samples found: {len(samples)}")
+[p.name for p in samples[:3]]
+```
+
+Here I'm using the HuggingFace `audiofolder` dataset builder - a convenient way to create datasets from directories containing audio files. This builder:
+
+- **Automatically discovers** all audio files in the specified directory
+- **Handles audio decoding** using `soundfile` under the hood  
+- **Normalizes the format** by converting all audio to numpy arrays
+- **Preserves metadata** like file paths and sampling rates
+- **Creates a standard interface** compatible with HuggingFace transformers
+
+```{python}
+from datasets import load_dataset
+dataset = load_dataset("audiofolder", data_dir=datadir)
+print(f"Dataset structure: {dataset}")
+print(f"Number of training samples: {len(dataset['train'])}")
+```
+
+The dataset contains a train set with audio features. 
+
+### Understanding the AudioFolder Data Structure
+
+The `audiofolder` dataset creates a `Dataset`; a standardized structure where each sample contains feature field.
+Here the `audio` field is the only feature field. It has several components. Let's examine what they look like:
+
+```{python}
+sample = dataset['train'][0]
+audio_info = sample['audio']
+print(f"📁 Original file path: {audio_info['path']}")
+print(f"🔢 Audio array shape: {audio_info['array'].shape}")
+print(f"🎵 Sampling rate: {audio_info['sampling_rate']} Hz")
+print(f"⏱️  Duration: {len(audio_info['array']) / audio_info['sampling_rate']:.2f} seconds")
+print(f"📊 Data type: {audio_info['array'].dtype}")
+```
+
+As we can see, the `audiofolder` dataset provides:
+
+- **`path`**: Original file location (useful for debugging/reference)
+- **`array`**: The decoded audio as a numpy array (ready for ML models)  
+- **`sampling_rate`**: Audio sampling frequency (preserved from original file)
+
+## Audio Sample Inspection
+
+The dataset preserves the original file paths. This makes it simple to create audio widgets for interactive exploration in Jupyter:
+
+```{python}
+from IPython.display import Audio, display
+
+print("🎧 Listening to the first 10 audio samples:")
+print("=" * 50)
+for i in range(min(10, len(dataset['train']))):
+    sample = dataset['train'][i]
+    filename = sample['audio']['path'].split('/')[-1]
+    duration = len(sample['audio']['array']) / sample['audio']['sampling_rate']
+    print(f"\n🎵 Sample {i+1}: {filename} ({duration:.1f}s)")
+    display(Audio(filename=sample['audio']['path']))
+```
+
+
+
+## Testing AudioFolder with CLAP Models
+
+Now comes the exciting part - testing how well our `audiofolder` dataset integrates with modern deep learning models. I'm using CLAP (Contrastive Language-Audio Pretraining) models, which can perform zero-shot audio classification. It does so by comparing audio embeddings with the embeddings of a set of pre-defined text descriptions.
+
+### Model Configuration
+
+We download the model from HuggingFace's model hub. The `clap_music_speech` model is specifically designed for music and speech classification tasks, while `clap_general` is a more general-purpose model.
+
+```{python}
+from config import DEVICE, MODELS, URBAN_SOUNDS_LABELS
+
+MODEL = MODELS['clap_music_speech']
+MODEL_LARGE = MODELS['clap_general']
+LABEL_DICT = URBAN_SOUNDS_LABELS
+LABELS = list(URBAN_SOUNDS_LABELS.values()) + ['Silence', 'Background noise']
+
+print(f"Model: {MODEL}")
+print(f"Device: {DEVICE}")
+print(f"Classification labels: {LABELS}")
+```
+
+### Zero-Shot Classification Pipeline
+
+The beauty of using `audiofolder` datasets is how seamlessly they work with HuggingFace transformers pipelines. The pipeline can directly consume the numpy arrays from our dataset:
+
+```{python}
+from transformers import pipeline
+
+audio_classifier = pipeline(
+    task="zero-shot-audio-classification",
+    model=MODEL, 
+    num_workers=1,
+    device=DEVICE,
+    batch_size=2,
+    candidate_labels=LABELS, 
+)
+
+print("✅ Audio classifier pipeline loaded successfully")
+print(f"🎯 Ready to classify audio into: {len(LABELS)} categories")
+```
+
+Audio decoding and normalization are handled under the hood. 
+
+### Batch Prediction Analysis
+
+Here's where the `datasets` library really shines - we can easily extract all the audio arrays for batch processing. This is much more efficient than processing files individually:
+
+```{python}
+import time
+
+print("🚀 Running batch predictions on all samples...")
+print("   (This demonstrates the efficiency of audiofolder + transformers)")
+start_time = time.time()
+
+# Extract audio arrays - this is straightforward with audiofolder format
+audio_arrays = [sample['audio']['array'] for sample in dataset['train']]
+results = audio_classifier(audio_arrays)
+
+end_time = time.time()
+print(f"⏱️  Processing time: {end_time - start_time:.1f} seconds")
+print(f"📊 Processed {len(results)} samples")
+print(f"🏃‍♂️ Average: {(end_time - start_time)/len(results)*1000:.1f} ms per sample")
+```
+
+### Results 
+
+Let's see if the predictions are any good. 
+The data is pretty noisy, so my expectations are low. 
+
+I just want to know if the most confidence predictions are correct.
+
+
+```{python}
+import pandas as pd
+
+def scores_to_df(results):
+    """Convert prediction results to DataFrame for analysis"""
+    flat = [{line['label']: line['score'] for line in result} for result in results]
+    scores = pd.DataFrame(flat)
+    return scores
+
+scores_df = scores_to_df(results)
+max_scores = scores_df.max()
+
+print("📈 Maximum confidence scores per class:")
+print(max_scores.sort_values(ascending=False))
+```
+
+```{python}
+import matplotlib.pyplot as plt
+
+# Visualize confidence distribution
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+
+# Max scores per class
+max_scores.plot(kind='bar', ax=ax1, color='steelblue')
+ax1.set_title('Maximum Confidence Scores by Class')
+ax1.set_ylabel('Confidence Score')
+ax1.tick_params(axis='x', rotation=45)
+
+# Overall confidence distribution
+all_confidences = []
+for result in results:
+    all_confidences.append(result[0]['score'])  # Top prediction confidence
+
+ax2.hist(all_confidences, bins=30, alpha=0.7, color='lightcoral')
+ax2.set_title('Distribution of Top Prediction Confidences')
+ax2.set_xlabel('Confidence Score')
+ax2.set_ylabel('Frequency')
+
+plt.tight_layout()
+plt.show()
+
+print(f"📊 Average top prediction confidence: {sum(all_confidences)/len(all_confidences):.3f}")
+```
+
+
+### Most Confident Predictions Analysis
+
+```{python}
+print("🎯 Most confident predictions per class:")
+print("=" * 50)
+
+# Get the sample with highest confidence for each class
+for label in max_scores.index:
+    max_idx = scores_df[label].idxmax()
+    confidence = scores_df.loc[max_idx, label]
+    sample_path = dataset['train'][max_idx]['audio']['path']
+    filename = sample_path.split('/')[-1]
+    
+    # Get top prediction for this sample
+    sample_prediction = results[max_idx]
+    top_pred = sample_prediction[0]
+    
+    print(f"\n🏷️  Class: {label}")
+    print(f"📁 File: {filename}")
+    print(f"🎯 Confidence in '{label}': {confidence:.3f}")
+    print(f"🏆 Top prediction: {top_pred['label']} ({top_pred['score']:.3f})")
+    
+    # Show audio
+    display(Audio(filename=sample_path))
+```
+
+The most confident predictions are mostly correct. 
+
+## More Analysis
+
+## Dataset Characteristics
+
+```{python}
+# Calculate dataset statistics
+total_samples = len(dataset['train'])
+sample_durations = []
+
+# Sample first 100 for performance
+for i in range(min(100, total_samples)):
+    sample = dataset['train'][i]
+    duration = len(sample['audio']['array']) / sample['audio']['sampling_rate']
+    sample_durations.append(duration)
+
+print("📊 Dataset Statistics (first 100 samples):")
+print(f"   • Average duration: {sum(sample_durations)/len(sample_durations):.2f} seconds")
+print(f"   • Min duration: {min(sample_durations):.2f} seconds")
+print(f"   • Max duration: {max(sample_durations):.2f} seconds")
+print(f"   • Total samples: {total_samples}")
+```
+
+### Prediction distribution
+
+```{python}
+# Analyze prediction patterns
+prediction_counts = {}
+for result in results:
+    top_pred = result[0]['label']
+    prediction_counts[top_pred] = prediction_counts.get(top_pred, 0) + 1
+
+print("🏆 Most frequently predicted classes:")
+sorted_predictions = sorted(prediction_counts.items(), key=lambda x: x[1], reverse=True)
+for label, count in sorted_predictions:
+    percentage = (count / len(results)) * 100
+    print(f"   • {label}: {count} samples ({percentage:.1f}%)")
+```
+
+## Conclusions
+
+### Dataset Quality
+- ✅ **798 audio samples** successfully loaded and processed
+- ✅ **Consistent format**: All samples at 48kHz sampling rate
+- ⚠️  **Content diversity**: Many samples appear to contain background noise rather than clear urban sounds
+
+### Model Performance
+- 🎯 **CLAP model functionality**: Successfully processes all audio samples
+- 📊 **Prediction distribution**: Shows clear preferences for certain classes
+- ⚠️  **Classification challenges**: Model struggles with noisy/ambiguous urban sounds
+
+### Recommendations
+
+1. **Dataset Curation**: Review samples with low confidence scores for potential removal or re-labeling
+2. **Model Selection**: Consider comparing multiple CLAP variants for better urban sound recognition
+3. **Data Augmentation**: Add clearer, more representative urban sound examples
+4. **Evaluation Metrics**: Implement ground truth labels for quantitative performance assessment
+

@@ -1,0 +1,24 @@
+---
+title: "To do"
+---
+
+
+## Website
+
+- Home
+  - [ ] Add a description of the project
+  - [ ] Add some photos
+- Datasets
+  - wav samples
+  -   [ ] Add a description of the dataset
+  - [ ] Hugginface 1 
+  - [ ] Hugginface 2 
+- [ ] Add reports section
+
+## Repo
+
+  - [ ] Add models
+  - [ ] Organize folders
+  - [ ] Move gpu packages to new `environment-gpu.yml`
+  - [ ] Add README 
+  - [ ] Update makefile

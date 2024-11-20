@@ -1,0 +1,29 @@
+name: urban-sounds
+channels:
+- conda-forge
+- huggingface
+- pytorch
+- nvidia
+dependencies:
+- conda-lock
+- cuda=12.4 # NVIDIA CUDA for GPU
+- cudatoolkit # NVIDIA CUDA Toolkit 
+- cudnn # NVIDIA cuDNN
+- librosa # Audio processing
+- pysoundfile # Audio processing
+- python=3.12
+- pytorch-cuda=12.4
+- pytorch=2.5.1
+- torchaudio=2.5.1
+- accelerate # PyTorch on gpu:w
+- transformers # huggingface transformers
+- datasets # huggingface datasets
+- nbformat # Writing Jupyter notebooks
+- nbclient # Running Jupyter notebooks
+- iprogress # Progress bars in ipython
+- ipykernel # Jupyter kernel for ipython
+- ipywidgets # Interactive widgets for Jupyter
+- itables # Interactive tables for Jupyter
+- bash_kernel # Bash kernel for Jupyter
+- jupyter-cache # Caching for Jupyter
+- great_tables # Great tables for Jupyter, v 0.17

@@ -1,0 +1,55 @@
+---
+title: "Datasets"
+execute: 
+  cache: true
+---
+
+# Wav samples
+
+This is a set of 1601 samples taken at 
+
+- By UNKOWN
+- Date UNKOWN
+- Location UNKOWN
+
+
+```{python}
+import sys
+sys.path.append("..")
+import config
+
+!ls ../data/samples/ | head -n 5
+```
+
+Besides wav and png files, there are no other file types in this dataset:
+```{python}
+%%bash
+ls ../data/samples | awk -F. '{print $NF}' | sort | uniq -c
+```
+
+
+```{python}
+from itables import show
+from pathlib import Path
+import pandas as pd
+from IPython.display import display
+from IPython.display import Audio
+from IPython.display import Image
+from IPython.display import Markdown
+
+datadir = config.SAMPLES_DIR
+wav_samples = list(datadir.glob("*.wav"))
+
+for f_wav in wav_samples[:3]:
+  display(Markdown(f"### {f_wav.stem}"))
+  display(Audio(filename=f_wav))
+  # use pahlib to get the png file
+  display(data=Markdown("Hi"))
+  f_png = f_wav.with_suffix(".png")
+  display(Image(filename=f_png))
+```
+
+
+
+
+

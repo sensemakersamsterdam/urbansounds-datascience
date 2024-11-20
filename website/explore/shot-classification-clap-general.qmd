@@ -1,0 +1,88 @@
+---
+title: Zero shot classification with CLAP general
+author: Sjoerd de Haan
+date: 2025-01-16
+jupyter: urban-sounds
+execute: 
+  cache: true
+freeze: true
+---
+
+After tyring CLAP music with poor results, Michiel suggested to try the CLAP general model.
+
+I am going to check the same exaples as last time
+
+
+```{python}
+max_idx = {'Claxon': 717,
+ 'Silence': 70,
+ 'Motorcycle': 212,
+ 'Music': 149,
+ 'Moped alarm': 176,
+ 'Background noise': 122,
+ 'Slamming door': 266,
+ 'Moped': 15,
+ 'Gunshot': 423,
+ 'Talking': 19,
+ 'Screaming': 781}
+```
+
+
+```{python}
+#| label:  constants
+DEVICE = "cuda:4"
+CLAP_GENERAL = "laion/larger_clap_general"
+LABEL_DICT ={0:'Gunshot', 1:'Moped alarm', 2:'Moped', 3:'Claxon', 4:'Slamming door', 5:'Screaming', 6:'Motorcycle', 7:'Talking', 8:'Music'}
+LABELS = ["Gunshot", "Moped", 'Moped alarm','Claxon','Screaming', 'Motorcycle','Talking', 'Slamming door','Music', 'Silence', 'Background noise']
+```
+
+```{python}
+#| label: hugging-face-datasets
+import sys
+sys.path.append("../..")
+from config import SAMPLES_DIR
+from datasets import load_dataset
+
+dataset = load_dataset("audiofolder", data_dir=SAMPLES_DIR)
+dataset
+```
+
+```{python}
+#| label: pipeline
+from transformers import pipeline
+audio_classifier = pipeline(
+  task = "zero-shot-audio-classification",
+  model = CLAP_GENERAL, 
+  num_workers =40,
+  device=DEVICE,
+  batch_size = 2,
+  candidate_labels = LABELS, 
+)
+```
+
+
+```{python}
+#| label: predict
+audio = [sample['audio']['array'] for sample in dataset['train']]
+%time results = audio_classifier(audio)
+```
+
+
+```{python}
+#| label: fig-predict-dataframe
+#| fig-cap: "Most confident predictions per class"
+import pandas as pd
+pd.set_option('display.precision', 3)
+pd.set_option('display.float_format', lambda x: '%.3f' % x)
+r = results[0]
+
+def scores_to_df(results):
+  flat = [{line['label']: line['score'] for line in r} for r in results]
+  scores = pd.DataFrame(flat)
+  return(scores)
+
+scores = scores_to_df(results)
+max_scores = scores.max()
+max_scores.plot(kind='bar')
+#[item['path'].split('/')[-1] for item in dataset['train']['audio']]
+```

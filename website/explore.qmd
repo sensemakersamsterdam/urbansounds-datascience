@@ -1,0 +1,12 @@
+---
+title: "Explorations"
+listing:
+  contents: "explore/*.qmd"
+  type: table
+  sort: date
+---
+
+Explorations of data and models can be found here.
+
+
+

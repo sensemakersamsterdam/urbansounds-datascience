@@ -1,0 +1,319 @@
+---
+title: Urban Sound 8K Dataset
+author: Sjoerd de Haan
+date: 14-06-2025
+execute: 
+  cache: true
+---
+
+# Introduction
+
+At SenseMakers Amsterdam we have collected samples of urban sounds for years now. 
+
+Meanwhile some academic papers have been published on the topic of urban sound classification. And they have great results. 
+
+Let's see what we can learn from a academic dataset: Urban Sounds 8K.
+
+
+
+# First look
+
+The dataset comes with a [website](https://urbansounddataset.weebly.com/urbansound8k.html), and a paper titled [A Dataset and Taxonomy for Urban Sound Research](https://www.justinsalamon.com/uploads/4/3/9/4/4394963/salamon_urbansound_acmmm14.pdf).
+
+The paper describes the goals of the dataset
+
+
+- Introduce a common taxonomy for urban sound classification
+- Provide a somewhat larger dataset
+- Identify challenges around urban sounds classification
+
+# The paper
+
+## Taxonomy
+
+The authors construct a taxonomy to overcome the problem of inconsistent labels in urban sound datasets. 
+They are guided by three principles:
+
+1. Factor in previous research
+2. Detailed as possible: e.g. "jackhammer" instead of "construction"
+3. Utility for urban sound research topics, such as sound pollution 
+
+In figure @fig-taxonomy-top-level you see the top level of the taxonomy, which is divided into five categories: Human, Nature, Mechanical, Music and Other.
+
+```{mermaid}
+%%| label: fig-taxonomy-top-level
+%%| fig-cap: "Top level taxonomy of urban sounds"
+graph TD
+    A[Urban Acoustic Environment] --> B[Human]
+    A --> C[Nature]
+    A --> D[Mechanical]
+    A --> E[Music]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+```
+
+The taxonomy is quite precise. In figure @fig-taxonomy-mechanical you see the taxonomy for road sounds. To get there, we had to traverse the following hierarchy: Mechanical → Motorized Transport → Road. 
+
+```{mermaid}
+%%| label: fig-taxonomy-mechanical
+%%| fig-cap: "Taxonomy of mechanical road sounds."
+graph TD
+    A[Mechanical] --> B[Construction]
+    A --> C[Ventilation]
+    A --> D[Non-motorized Transport]
+    A --> E[Social/Signals]
+    A --> F[Motorized Transport]
+    
+    F --> F1[Marine]
+    F --> F2[Rail]
+    F --> F3[Road]
+    F --> F4[Air]
+    
+    F3 --> F3A[Car]
+    F3 --> F3B[Motorcycle]
+    F3 --> F3C[Bus]
+    F3 --> F3D[Truck]
+    F3 --> F3E[Garbage Truck]
+    
+    style A fill:#fff3e0
+    style B fill:#ffecb3
+    style C fill:#ffecb3
+    style D fill:#ffecb3
+    style E fill:#ffecb3
+    style F fill:#ffecb3
+    style F1 fill:#e3f2fd
+    style F2 fill:#e8eaf6
+    style F3 fill:#fce4ec
+    style F4 fill:#f1f8e9
+```
+
+
+Cars are then divided into Private, Ambulance, Police, Taxi.
+The final leaves are the sounds that these cars can produce. 
+
+In figure @fig-taxonomy-car you see some of the final leaves. Not that engine is divided in
+
+- Engine idling
+- Engine accelerating
+- Engine passing
+
+Engine accelerating can be an intimidating sound when it is a sport's car. 
+From the perspective of sound pollution, it is important to distinguish between these sounds.
+
+```{mermaid}
+%%| label: fig-taxonomy-car
+%%| fig-cap: "Taxonomy of car sounds."
+graph TD
+    A[Car] --> B1[Police]
+    A --> B2[Ambulance] 
+    A --> B3[Taxi]
+    A --> B4[Private]
+    
+    B1 -.-> C1[Engine idling]
+    B1 -.-> C2[Engine accelerating]
+    B1 -.-> C3[Horn]
+    B1 -.-> C4[Siren approaching]
+    B1 -.-> C5[Wheels passing]
+    
+    B2 -.-> C1
+    B2 -.-> C2
+    B2 -.-> C3
+    B2 -.-> C4
+    B2 -.-> C5
+    
+    B3 -.-> C1
+    B3 -.-> C2
+    B3 -.-> C3
+    B3 -.-> C5
+    
+    B4 -.-> C1
+    B4 -.-> C2
+    B4 -.-> C3
+    B4 -.-> C5
+    
+    style A fill:#fce4ec
+    style C1 fill:#e8f5e8
+    style C2 fill:#e8f5e8
+    style C3 fill:#e8f5e8
+    style C4 fill:#e8f5e8
+    style C5 fill:#e8f5e8
+```
+
+## Datasets
+
+The paper describes the goals as 
+
+
+  1. It should contain sounds that occur in an urban environment
+  2. All recordings must be real field-recordings, 
+  3. The dataset should be sufficiently large and varied in terms of sounds and recording conditions such that it will be useful for training scalable algorithms capable of analyzing real data from sensor networks or multimedia repositories.
+
+The data was retained from Freesound, a collection of user uploaded sounds. 
+The sounds were collected from a search query like "Jackhammer" and then manually checked. 
+Over all labels, 1302 out of 3000+ sounds survived the check.
+
+Next start and end times were annotated, together with a background or foreground label. 
+
+The recordings and annotations are available online, totalling 27 hours.
+Recording durations vary from 1-2 seconds (gunshot) to 30 seconds 
+
+For the task of sound source identification the authors derived UrbanSounds 8K.
+
+First they limted UrbanSounds to 10 classes, which are listed in the table below.
+
+They slice the recordings into clips of 4 second max and limited to 1000 clips per class.
+To avoid data leakage, the authors created a 10-fold cross-validation setup that contains clips of a recording to a single fold. 
+
+
+
+# The data
+
+The dataset is available on Hugging Face as `danavery/urbansound8K`.
+
+There is an [online sound browser](https://huggingface.co/datasets/danavery/urbansound8K/).
+
+#### Load dataset
+```{python}
+#| label: "Load dataset"
+from datasets import load_dataset
+ds = load_dataset("danavery/urbansound8K")
+ds
+```
+
+#### Splits
+
+```{python}
+#| label: "Splits"
+ds.keys()
+```
+
+
+#### Features
+```{python}
+#| label: "Features"
+features = ds['train'].features
+for feature_name, feature_type in features.items():
+  print(f"{(feature_name + ':'):<20} {feature_type}")
+```
+
+#### Audio
+
+```{python}
+#| label: "Audio feature"
+audio_feature = ds['train'].features['audio']
+print(f"Audio feature: {audio_feature}")
+print(f"Sampling rate: {audio_feature.sampling_rate}")
+```
+
+
+
+#### Sampling rates
+
+The sampling rate is not uniform. 
+```{python}
+#| label: "Sampling rates"
+from collections import Counter
+sampling_rates = Counter(sample['audio']['sampling_rate'] for sample in ds['train'])
+for rate, n in sampling_rates.items(): # Fill frequency with spaces from the left
+  print(f"Sampling rate {rate:>7} Hz: {n} samples")
+ds['train'].unique
+```
+
+
+#### Folds
+
+Here we see the folds
+
+```{python}
+#| label: "Folds"
+folds = ds['train'].unique('fold')
+sorted(folds)
+```
+
+#### Classes
+
+Here we see the folds
+
+
+
+```{python}
+#| label: "Classes"
+import pandas as pd
+from great_tables import GT
+classes = pd.DataFrame({"Class": ds['train'].unique('class')})
+classes
+GT(classes).tab_header(
+    title="Urban Sounds 8K Classes",
+    subtitle="Classes in the Urban Sounds 8K dataset"
+)
+```
+
+The classes are limited. 
+
+#### Audio samples
+
+```{python}
+#| label: "Audio samples"
+from IPython.display import Audio, display
+
+def display_sample(sample):
+    audio_array = sample['audio']['array'] 
+    sample_rate = sample['audio']['sampling_rate']
+    
+    display(Audio(audio_array, rate=sample_rate))
+    print(f"Fold: {sample['fold']}")
+    print(f"File: {sample['audio']['path'].split('/')[-1]}")
+    print(f"Sample rate: {sample_rate}, Shape: {audio_array.shape}")
+    print(f"Slice file name: {sample['slice_file_name']}")
+    print(f"Class: {sample['class']}")
+    print(f"Salience: {sample['salience']}")
+    print(f"Start: {sample['start']}, End: {sample['end']}")
+    print("-" * 50)
+
+for i, sample in zip(range(10), ds['train']):
+    display_sample(sample) 
+    # Use the audio array and sampling rate directly
+```
+
+
+Many to the sounds in this dataset are much more clear than the sounds we record in the city.
+
+## Salient sounds
+
+Many city sounds are salient.  
+
+#### Slice file name
+
+
+```{python}
+#| label: "Filter by salience"
+train_salience_2 = ds['train'].filter(lambda x: x['salience'] == 2)
+print(f"Original dataset size: {len(ds['train'])}")
+print(f"Filtered dataset size: {len(train_salience_2)}")
+print(f"Percentage with salience=2: {len(train_salience_2)/len(ds['train'])*100:.1f}%")
+```
+
+
+
+```{python}
+#| label: "Audio samples with salience=2"
+for i, sample in zip(range(50), train_salience_2):
+    display_sample(sample) 
+```
+
+# Conclusions
+
+A first look shows that that Urban Sounds 8K has much higher audio quality than the samples that we record in the city. This may be one of the reasons why we achieve lower classification scores.  
+
+
+The 10 classes chosen for Urban Sounds 8K are mostly relevant to noise pollution.
+They are only very limited. 
+
+
+
+
+

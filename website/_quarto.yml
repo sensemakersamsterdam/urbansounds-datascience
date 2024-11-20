@@ -1,0 +1,26 @@
+project:
+  type: website
+  output-dir: ../public
+
+website:
+  title: "Urban Sounds"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: datasets.qmd
+        text: Datasets
+      - href: explore.qmd
+      - href: todo.qmd
+      - about.qmd
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+    toc: true
+
+
+
